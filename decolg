@@ -1,0 +1,55 @@
+#!/usr/bin/perl
+
+@samples = ();
+$which = 1;
+$maxm = 0;
+$minm = 65536;
+$samps = 0;
+
+while(<>) {
+	chomp;
+	(s/^[PS],//) || next;
+
+	# don't need window
+	# only care about spaces, not marks
+	push(@samples, map { hex $_ } grep {
+			if ($samps++ && $which) { # mark, skip first
+				$k = hex($_);
+				$maxm = $k if ($maxm < $k);
+				$minm = $k if ($k < $minm);
+			}
+			$which ^= 1;
+		} grep { length } split(/(....)/, substr($_, 4)));
+}
+
+print "n = $samps (ends on ", (($samps & 1) ? 'mark' : 'space'), ")\n";
+print "max mark = $maxm\nmin mark = $minm\n";
+print "n(spaces) = ", scalar(@samples), "\n";
+
+# drop initial abnormal space
+shift(@samples);
+
+# max and min and avg
+$max = 0;
+$min = 65536;
+$avg = 0;
+grep {
+	$max = $_ if ($max < $_);
+	$min = $_ if ($_ < $min);
+	$avg += $_;
+} @samples;
+print "max space = $max\nmin space = $min\n";
+$avg /= scalar(@samples); print "avg space = $avg\n";
+
+# use average as a dividing line.
+$lobo = 0; $loco = 0;
+$upbo = 0; $upco = 0;
+grep {
+	if ($_ < $avg) { $lobo += $_; $loco++; }
+	else { $upbo += $_; $upco++; }
+} @samples;
+$lobo /= $loco; $upbo /= $upco;
+print "lower bucket space avg = $lobo\nupper bucket space avg = $upbo\n";
+
+print join('', map { ($_ < $avg) ? '0' : '1' } @samples), "\n";
+
